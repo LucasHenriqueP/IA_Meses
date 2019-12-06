@@ -6,38 +6,46 @@ from skimage import data, exposure, io
 from skimage.transform import rescale, resize
 import cv2
 import os
-
+import glob
 
 meses = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
-def hogFeatures(image):
-    #image = io.imread(imag)
+def hogFeatures(imag):
+    image = io.imread(imag)
     resizesImage = resize(image,(60,150))
     fd = hog(resizesImage, orientations=8, pixels_per_cell=(6, 6), cells_per_block=(1, 1), visualize=False, multichannel=False)
-    print(fd)
     return fd
 
 
-def caracteristicas():
+def caracteristicas(treino=''):
     print(meses)
     hogs = []
     labels = []
     # r=root, d=directories, f = files
-    saida = open('output.txt','w')
     for key, m in enumerate(meses):
-        for r, d, f in os.walk(m):
-            for file in f:
-                if '.bmp' in file:
-                    fd = hogFeatures(os.path.join(r, file))
-        hogs.append(fd)
-        labels.append(m)
-    print(len(hogs))
+        listOfFiles = [f for f in glob.glob("./"+m+"/"+treino+"*.bmp", recursive=False)]
+        for img in listOfFiles:
+            print(img)
+            fd = hogFeatures(img)
+            hogs.append(fd)
+            labels.append(m)
+    return(hogs,labels)
 
 def main():
     print("Extraido caracteristicas")
-    #caracteristicas()
-    feats = []
-    labels = []
+    treinoFeats = []
+    treinoLabels = []
+    testeFeats = []
+    testeLabels = []
+
+    testeFeats, testeLabels = caracteristicas('teste/')
+    treinoFeats, treinoLabels = caracteristicas()
+
+    model = KNeighborsClassifier(n_neighbors=5)
+    model.fit(treinoFeats, treinoLabels)
+    pred = model.score(testeFeats,testeLabels)
+    print("%.02f %%"  %(pred*100))
+    '''
     maio1 = io.imread("./maio/md1.bmp")
     maio2 = io.imread("./maio/md1.bmp")
     maio3 = io.imread("./maio/md1.bmp")
@@ -63,22 +71,18 @@ def main():
     labels.append("janeiro")
 
 
-    model = KNeighborsClassifier(n_neighbors=1)
+    model = KNeighborsClassifier(n_neighbors=2)
     model.fit(feats, labels)
 
 
     feat1 = hogFeatures(maio3)
     feat2 = hogFeatures(janeiro3)
-    pred = model.predict(feat1.reshape(1, -1))[0]
+    print(feat1.reshape(1, -1))
+    pred = model.score((feat2.reshape(1, -1)),['maio'])
     print(pred)
-    maio3 = resize(maio3,(60,150))
-    maio3 = cv2.cvtColor(maio3,cv2.COLOR_GRAY2RGB)
-    cv2.putText(maio3, pred.title(), (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-		(255, 0, 0), 3)
-    cv2.imshow("Test Image #{}".format(0 + 1), maio3)
-    cv2.waitKey(0)
     
-    '''
+    
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4), sharex=True, sharey=True)
 
     ax1.axis('off')
